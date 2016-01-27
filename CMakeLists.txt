@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project( robotCV )
+project( Camera-Vision-2016 )
 find_package( OpenCV REQUIRED )
-add_executable( robotCV main.cpp )
-target_link_libraries( robotCV ${OpenCV_LIBS} )
+add_executable( Camera-Vision-2016 main.cpp )
+target_link_libraries( Camera-Vision-2016 ${OpenCV_LIBS} )
