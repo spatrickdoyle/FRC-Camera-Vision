@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 2.8)
+project( robotCV )
+find_package( OpenCV REQUIRED )
+add_executable( robotCV main.cpp )
+target_link_libraries( robotCV ${OpenCV_LIBS} )
