@@ -9,3 +9,10 @@ To build:<br>
 cmake .
 make
 ```
+<br>
+
+angle of view calculation<br>
+angle of deviance calculation<br>
+distance calculation (including angle corrections both ways)<br>
+angle calculation<br>
+offset calculation<br>
