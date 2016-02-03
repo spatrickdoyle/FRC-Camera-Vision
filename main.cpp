@@ -2,6 +2,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include <math.h>
+#include <iomanip>
 
 using namespace cv;
 using namespace std;
@@ -22,11 +23,11 @@ int main(){
 	Mat thresholded;//camera image thresholded
 
 	//high and low hsv threshold settings
-	int Hlow = 68;
-	int Hhigh = 99;
-	int Slow = 70;
-	int Shigh = 255;
-	int Vlow = 0;
+	int Hlow = 77;
+	int Hhigh = 87;
+	int Slow = 25;
+	int Shigh = 108;
+	int Vlow = 231;
 	int Vhigh = 255;
 
 	//track bars for each threshold variable
@@ -42,10 +43,11 @@ int main(){
 	int center_x;
 	int center_y;
 
-	double goal_height = 97;//preset height of the goal, in INCHES. For the competition goals it should be 83
+	double goal_height = 66.25;//preset height of the goal, in INCHES. For the competition goals it should be 97
 	double camera_height = 31.5;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
 	double camera_angle = 29;//angle of deviance from the horizontal, in DEGREES
-	double length = 20;
+	double length = 20;//width of the goal in INCHES
+	double offset = 0;//how far offset the center of the shooter is from the camera in INCHES. Positive means the camera is to the left of the shooter
 
 	double distance;//distance camera is from goal, to be calculated
 	double phi;//vertical angle of deviance the sightline of the camera has from the bottom of the goal
@@ -84,7 +86,10 @@ int main(){
 		distance += sqrt(pow(length/2.0,2) - pow(distance*tan((friggin_box.width/2.0)*hor_deg*(PI/180.0)),2));
 		theta = (center_x-320)*hor_deg;//in DEGREES. Positive value of theta indicates the robot must turn in the COUNTERCLOCKWISE direction because that's how math works
 
-		cout << theta << ' ' << distance << '\n';
+		//distance = sqrt(pow(offset + d*cos((90-theta)*(PI/180.0)),2) + pow(d*sin((90-theta)*(PI/180.0)),2));
+		//cout << sqrt(pow(offset + d*cos((90-theta)*(PI/180.0)),2) + pow(d*sin((90-theta)*(PI/180.0)),2)) << '\n';
+
+		cout << "DISTANCE:" << setw(9) << distance << "   ANGLE:" << setw(9) << theta << '\n';
 
 		//exit program if pressing ESC
 		if (waitKey(10) == 27)
