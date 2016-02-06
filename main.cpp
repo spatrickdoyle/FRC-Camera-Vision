@@ -10,24 +10,26 @@ using namespace std;
 cv::Rect findBiggestBlob(cv::Mat & matImage);//this function finds the bounding rectangle of the largest contiguous region in the image
 
 const double PI = 3.141592653589793238462643383279;
-const double hor_deg = 0.07914;//in DEGREES PER PIXEL
-const double vert_deg = 0.08189;//in DEGREES PER PIXEL
+const double hor_deg = 0.07914;//in DEGREES PER PIXEL. Horizontal field of view is 50.6496 degrees
+const double vert_deg = 0.08189;//in DEGREES PER PIXEL. Vertical field of view is 39.3072 degrees
 
 int main(){
-	VideoCapture camera(0);//initialize camera
+	VideoCapture camera(1);//initialize camera
 
 	//namedWindow("ctrl",WINDOW_AUTOSIZE);//control window for calibrating the camera
 
 	Mat screen_cap;//camera image
 	Mat hsv_img;//camera image converted to hsv
 	Mat thresholded;//camera image thresholded
+	Mat cap1;
+	Mat cap2;
 
 	//high and low hsv threshold settings
-	int Hlow = 77;
-	int Hhigh = 87;
-	int Slow = 25;
-	int Shigh = 108;
-	int Vlow = 231;
+	int Hlow = 67;
+	int Hhigh = 91;
+	int Slow = 14;
+	int Shigh = 238;
+	int Vlow = 239;
 	int Vhigh = 255;
 
 	//track bars for each threshold variable
@@ -43,9 +45,9 @@ int main(){
 	int center_x;
 	int center_y;
 
-	double goal_height = 66.25;//preset height of the goal, in INCHES. For the competition goals it should be 97
-	double camera_height = 31.5;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
-	double camera_angle = 29;//angle of deviance from the horizontal, in DEGREES
+	double goal_height = 95;//preset height to top of goal, in INCHES. For the competition goals it should be 97
+	double camera_height = 15;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
+	double camera_angle = 42;//angle of deviance from the horizontal, in DEGREES
 	double length = 20;//width of the goal in INCHES
 	double offset = 0;//how far offset the center of the shooter is from the camera in INCHES. Positive means the camera is to the left of the shooter
 
@@ -53,14 +55,16 @@ int main(){
 	double phi;//vertical angle of deviance the sightline of the camera has from the bottom of the goal
 	double theta;//horizontal angle of deviance the sightline of the camera has from the center of the goal
 
+	int flag = 1;
+
 	while (true){
 		camera.read(screen_cap);//get the current frame
 
 		//smooth everything out (I'm not sure if this is necessary but I'm not getting rid of it now)
-		erode(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
+		/*erode(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
 		dilate(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
 		dilate(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
-		erode(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
+		erode(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));*/
 
 		cvtColor(screen_cap,hsv_img,CV_BGR2HSV);//convert the frame to HSV, because it's easier to threshold (theoretically)
 
@@ -77,6 +81,8 @@ int main(){
 
 		imshow("thresholded",thresholded);
 		imshow("screen_cap",screen_cap);
+		if (flag == 3)
+			imshow("screen_cap",cap1-cap2);
 
 		//calculate the center of the box, the distance from the goal, and the angle of deviance of the sightline
 		center_x = friggin_box.x + (friggin_box.width/2.0);
@@ -89,11 +95,19 @@ int main(){
 		//distance = sqrt(pow(offset + d*cos((90-theta)*(PI/180.0)),2) + pow(d*sin((90-theta)*(PI/180.0)),2));
 		//cout << sqrt(pow(offset + d*cos((90-theta)*(PI/180.0)),2) + pow(d*sin((90-theta)*(PI/180.0)),2)) << '\n';
 
-		cout << "DISTANCE:" << setw(9) << distance << "   ANGLE:" << setw(9) << theta << '\n';
+		//cout << "DISTANCE:" << setw(9) << distance << "   ANGLE:" << setw(9) << theta << '\n';
 
 		//exit program if pressing ESC
 		if (waitKey(10) == 27)
 			return 0;
+		else if (waitKey(10) == 32){
+			cout << flag << '\n';
+			if (flag == 1)
+				cap1 = screen_cap.clone();
+			else if (flag == 2)
+				cap2 = screen_cap.clone();
+			flag++;
+		}
 	}
 
 	return 0;
