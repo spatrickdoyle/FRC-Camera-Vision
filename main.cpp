@@ -48,7 +48,7 @@ int main(){
 
 	double goal_height = 95;//preset height to top of goal, in INCHES. For the competition goals it should be 97
 	double camera_height = 15;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
-	double camera_angle = 42;//angle of deviance from the horizontal, in DEGREES
+	double camera_angle = 42;//angle of deviance from the horizontal, in DEGREES. Should be 42 officially
 	double length = 20;//width of the goal in INCHES
 	double offset = 0;//how far offset the center of the shooter is from the camera in INCHES. Positive means the camera is to the left of the shooter
 
@@ -58,19 +58,19 @@ int main(){
 
 	int flag = 1;
 
-	ofstream i2c_file ("/dev/i2c-1",ofstream::binary);
-	char buf[10] = {1};
+	//ofstream i2c_file ("/dev/i2c-1",ofstream::binary);
+	//char buf[10] = {1};
 
 	while (true){
-		i2c_file.write(buf,10);
+		//i2c_file.write(buf,10);
 
 		camera.read(screen_cap);//get the current frame
 
 		//smooth everything out (I'm not sure if this is necessary but I'm not getting rid of it now)
-		/*erode(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
+		erode(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
 		dilate(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
 		dilate(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
-		erode(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));*/
+		erode(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
 
 		cvtColor(screen_cap,hsv_img,CV_BGR2HSV);//convert the frame to HSV, because it's easier to threshold (theoretically)
 
