@@ -3,6 +3,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <math.h>
 #include <iomanip>
+#include <fstream>
 
 using namespace cv;
 using namespace std;
@@ -14,7 +15,7 @@ const double hor_deg = 0.07914;//in DEGREES PER PIXEL. Horizontal field of view 
 const double vert_deg = 0.08189;//in DEGREES PER PIXEL. Vertical field of view is 39.3072 degrees
 
 int main(){
-	VideoCapture camera(1);//initialize camera
+	VideoCapture camera(0);//initialize camera
 
 	//namedWindow("ctrl",WINDOW_AUTOSIZE);//control window for calibrating the camera
 
@@ -57,7 +58,12 @@ int main(){
 
 	int flag = 1;
 
+	ofstream i2c_file ("/dev/i2c-1",ofstream::binary);
+	char buf[10] = {1};
+
 	while (true){
+		i2c_file.write(buf,10);
+
 		camera.read(screen_cap);//get the current frame
 
 		//smooth everything out (I'm not sure if this is necessary but I'm not getting rid of it now)
@@ -79,8 +85,8 @@ int main(){
 		friggin_box = findBiggestBlob(thresholded);//get the bounding box of the biggest goal
 		rectangle(screen_cap,friggin_box,Scalar(0,0,255));//draw it onto the screen because I want to
 
-		imshow("thresholded",thresholded);
-		imshow("screen_cap",screen_cap);
+		//imshow("thresholded",thresholded);
+		//imshow("screen_cap",screen_cap);
 		if (flag == 3)
 			imshow("screen_cap",cap1-cap2);
 
@@ -95,7 +101,7 @@ int main(){
 		//distance = sqrt(pow(offset + d*cos((90-theta)*(PI/180.0)),2) + pow(d*sin((90-theta)*(PI/180.0)),2));
 		//cout << sqrt(pow(offset + d*cos((90-theta)*(PI/180.0)),2) + pow(d*sin((90-theta)*(PI/180.0)),2)) << '\n';
 
-		//cout << "DISTANCE:" << setw(9) << distance << "   ANGLE:" << setw(9) << theta << '\n';
+		cout << "DISTANCE:" << setw(9) << distance << "   ANGLE:" << setw(9) << theta << '\n';
 
 		//exit program if pressing ESC
 		if (waitKey(10) == 27)
