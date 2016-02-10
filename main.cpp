@@ -8,14 +8,15 @@
 using namespace cv;
 using namespace std;
 
-cv::Rect findBiggestBlob(cv::Mat & matImage);//this function finds the bounding rectangle of the largest contiguous region in the image
+Rect findBiggestBlob(Mat & matImage);//this function finds the bounding rectangle of the largest contiguous region in the image
 
 const double PI = 3.141592653589793238462643383279;
 const double hor_deg = 0.07914;//in DEGREES PER PIXEL. Horizontal field of view is 50.6496 degrees
 const double vert_deg = 0.08189;//in DEGREES PER PIXEL. Vertical field of view is 39.3072 degrees
 
 int main(){
-	VideoCapture camera(0);//initialize camera
+	system("fswebcam -d /dev/video1 -c cam.cfg");
+	VideoCapture camera(1);//initialize camera
 
 	//namedWindow("ctrl",WINDOW_AUTOSIZE);//control window for calibrating the camera
 
@@ -26,11 +27,11 @@ int main(){
 	Mat cap2;
 
 	//high and low hsv threshold settings
-	int Hlow = 67;
-	int Hhigh = 91;
-	int Slow = 14;
-	int Shigh = 238;
-	int Vlow = 239;
+	int Hlow = 54;
+	int Hhigh = 117;
+	int Slow = 49;
+	int Shigh = 255;
+	int Vlow = 236;
 	int Vhigh = 255;
 
 	//track bars for each threshold variable
@@ -46,9 +47,9 @@ int main(){
 	int center_x;
 	int center_y;
 
-	double goal_height = 95;//preset height to top of goal, in INCHES. For the competition goals it should be 97
-	double camera_height = 15;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
-	double camera_angle = 42;//angle of deviance from the horizontal, in DEGREES. Should be 42 officially
+	double goal_height = 66.3;//preset height to top of goal, in INCHES. For the competition goals it should be 95
+	double camera_height = 48.6;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
+	double camera_angle = 14;//angle of deviance from the horizontal, in DEGREES. Should be 42 officially
 	double length = 20;//width of the goal in INCHES
 	double offset = 0;//how far offset the center of the shooter is from the camera in INCHES. Positive means the camera is to the left of the shooter
 
@@ -85,8 +86,8 @@ int main(){
 		friggin_box = findBiggestBlob(thresholded);//get the bounding box of the biggest goal
 		rectangle(screen_cap,friggin_box,Scalar(0,0,255));//draw it onto the screen because I want to
 
-		//imshow("thresholded",thresholded);
-		//imshow("screen_cap",screen_cap);
+		imshow("thresholded",thresholded);
+		imshow("screen_cap",screen_cap);
 		if (flag == 3)
 			imshow("screen_cap",cap1-cap2);
 
