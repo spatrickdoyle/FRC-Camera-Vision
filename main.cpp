@@ -15,8 +15,8 @@ const double hor_deg = 0.07914;//in DEGREES PER PIXEL. Horizontal field of view 
 const double vert_deg = 0.08189;//in DEGREES PER PIXEL. Vertical field of view is 39.3072 degrees
 
 int main(){
-	system("fswebcam -d /dev/video1 -c cam.cfg");
-	VideoCapture camera(1);//initialize camera
+	system("fswebcam -d /dev/video0 -c cam.cfg -r 640x480");
+	VideoCapture camera(0);//initialize camera
 
 	//namedWindow("ctrl",WINDOW_AUTOSIZE);//control window for calibrating the camera
 
@@ -86,8 +86,8 @@ int main(){
 		friggin_box = findBiggestBlob(thresholded);//get the bounding box of the biggest goal
 		rectangle(screen_cap,friggin_box,Scalar(0,0,255));//draw it onto the screen because I want to
 
-		imshow("thresholded",thresholded);
-		imshow("screen_cap",screen_cap);
+		//imshow("thresholded",thresholded);
+		//imshow("screen_cap",screen_cap);
 		if (flag == 3)
 			imshow("screen_cap",cap1-cap2);
 
