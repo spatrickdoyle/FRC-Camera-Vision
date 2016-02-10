@@ -5,6 +5,14 @@
 #include <iomanip>
 #include <fstream>
 
+/*TODO:
+Do output from pins
+figure out how to friggin calibrate it if it's on the board
+detect if it is on the embedded platform, and only draw to the screen if it ISN'T
+Make a better gui for calibrating, so you don't have to comment and uncomment and hardcode crap
+Maybe send camera index as an argument
+*/
+
 using namespace cv;
 using namespace std;
 
@@ -15,18 +23,16 @@ const double hor_deg = 0.07914;//in DEGREES PER PIXEL. Horizontal field of view 
 const double vert_deg = 0.08189;//in DEGREES PER PIXEL. Vertical field of view is 39.3072 degrees
 
 int main(){
-	system("fswebcam -d /dev/video0 -c cam.cfg -r 640x480");
+	system("fswebcam -d /dev/video0 -c cam.cfg -r 640x480");//configure camera. It runs every time because I don't know how persistant the changes are
 	VideoCapture camera(0);//initialize camera
 
-	//namedWindow("ctrl",WINDOW_AUTOSIZE);//control window for calibrating the camera
+	//namedWindow("ctrl",WINDOW_AUTOSIZE);//control window for calibrating the camera - commented out unless needed for calibration
 
 	Mat screen_cap;//camera image
 	Mat hsv_img;//camera image converted to hsv
 	Mat thresholded;//camera image thresholded
-	Mat cap1;
-	Mat cap2;
 
-	//high and low hsv threshold settings
+	//high and low hsv threshold settings, to be changed when calibrating
 	int Hlow = 54;
 	int Hhigh = 117;
 	int Slow = 49;
@@ -51,23 +57,15 @@ int main(){
 	double camera_height = 48.6;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
 	double camera_angle = 14;//angle of deviance from the horizontal, in DEGREES. Should be 42 officially
 	double length = 20;//width of the goal in INCHES
-	double offset = 0;//how far offset the center of the shooter is from the camera in INCHES. Positive means the camera is to the left of the shooter
 
 	double distance;//distance camera is from goal, to be calculated
 	double phi;//vertical angle of deviance the sightline of the camera has from the bottom of the goal
 	double theta;//horizontal angle of deviance the sightline of the camera has from the center of the goal
 
-	int flag = 1;
-
-	//ofstream i2c_file ("/dev/i2c-1",ofstream::binary);
-	//char buf[10] = {1};
-
 	while (true){
-		//i2c_file.write(buf,10);
-
 		camera.read(screen_cap);//get the current frame
 
-		//smooth everything out (I'm not sure if this is necessary but I'm not getting rid of it now)
+		//smooth everything out (I'm not sure if this is necessary but I'm not getting rid of it now, it works pretty well)
 		erode(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
 		dilate(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
 		dilate(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
@@ -77,7 +75,7 @@ int main(){
 
 		inRange(hsv_img,Scalar(Hlow,Slow,Vlow),Scalar(Hhigh,Shigh,Vhigh),thresholded);//threshold it
 
-		//do it again (to get rid of noise)
+		//blur it again (to get rid of noise)
 		erode(thresholded,thresholded,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
 		dilate(thresholded,thresholded,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
 		dilate(thresholded,thresholded,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
@@ -86,35 +84,23 @@ int main(){
 		friggin_box = findBiggestBlob(thresholded);//get the bounding box of the biggest goal
 		rectangle(screen_cap,friggin_box,Scalar(0,0,255));//draw it onto the screen because I want to
 
+		//show the image and the thresholded image, only necessary for calibration
 		//imshow("thresholded",thresholded);
 		//imshow("screen_cap",screen_cap);
-		if (flag == 3)
-			imshow("screen_cap",cap1-cap2);
 
 		//calculate the center of the box, the distance from the goal, and the angle of deviance of the sightline
 		center_x = friggin_box.x + (friggin_box.width/2.0);
 		center_y = friggin_box.y + (friggin_box.height/2.0);
 		phi = (240 - friggin_box.y)*vert_deg;
-		distance = (goal_height-camera_height)/tan((phi+camera_angle)*(PI/180.0));
-		distance += sqrt(pow(length/2.0,2) - pow(distance*tan((friggin_box.width/2.0)*hor_deg*(PI/180.0)),2));
+		distance = (goal_height-camera_height)/tan((phi+camera_angle)*(PI/180.0));//distance from the nearest point of the goal
+		distance += sqrt(pow(length/2.0,2) - pow(distance*tan((friggin_box.width/2.0)*hor_deg*(PI/180.0)),2));//account for angle of approach
 		theta = (center_x-320)*hor_deg;//in DEGREES. Positive value of theta indicates the robot must turn in the COUNTERCLOCKWISE direction because that's how math works
-
-		//distance = sqrt(pow(offset + d*cos((90-theta)*(PI/180.0)),2) + pow(d*sin((90-theta)*(PI/180.0)),2));
-		//cout << sqrt(pow(offset + d*cos((90-theta)*(PI/180.0)),2) + pow(d*sin((90-theta)*(PI/180.0)),2)) << '\n';
 
 		cout << "DISTANCE:" << setw(9) << distance << "   ANGLE:" << setw(9) << theta << '\n';
 
 		//exit program if pressing ESC
 		if (waitKey(10) == 27)
 			return 0;
-		else if (waitKey(10) == 32){
-			cout << flag << '\n';
-			if (flag == 1)
-				cap1 = screen_cap.clone();
-			else if (flag == 2)
-				cap2 = screen_cap.clone();
-			flag++;
-		}
 	}
 
 	return 0;
