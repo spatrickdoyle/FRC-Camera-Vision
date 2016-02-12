@@ -6,11 +6,15 @@
 #include <fstream>
 
 /*TODO:
+communicate with the roborio
 Do output from pins
 figure out how to friggin calibrate it if it's on the board
+control the LED ring from the board and use it to shoot
+control LED strips to indicate if the shooter is lined up
 detect if it is on the embedded platform, and only draw to the screen if it ISN'T
 Make a better gui for calibrating, so you don't have to comment and uncomment and hardcode crap
 Maybe send camera index as an argument
+make second camera recognize balls
 */
 
 using namespace cv;
@@ -62,6 +66,13 @@ int main(){
 	double phi;//vertical angle of deviance the sightline of the camera has from the bottom of the goal
 	double theta;//horizontal angle of deviance the sightline of the camera has from the center of the goal
 
+	system("echo 25 > /sys/class/gpio/export");
+	system("echo out > /sys/class/gpio/gpio25/direction");
+
+	ostream ring_pin;
+	ring_pin.open("/sys/class/gpio/gpio57/value");
+	int flag = 1;
+
 	while (true){
 		camera.read(screen_cap);//get the current frame
 
@@ -101,6 +112,13 @@ int main(){
 		//exit program if pressing ESC
 		if (waitKey(10) == 27)
 			return 0;
+
+		ring_pin.write(flag);
+		if (flag == 1)
+			flag = 0;
+		else if (flag == 0)
+			flag = 1;
+		usleep(1);
 	}
 
 	return 0;
