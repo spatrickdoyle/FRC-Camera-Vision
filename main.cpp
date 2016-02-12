@@ -69,7 +69,7 @@ int main(){
 	system("echo 25 > /sys/class/gpio/export");
 	system("echo out > /sys/class/gpio/gpio25/direction");
 
-	ostream ring_pin;
+	ofstream ring_pin;
 	ring_pin.open("/sys/class/gpio/gpio57/value");
 	int flag = 1;
 
@@ -113,12 +113,12 @@ int main(){
 		if (waitKey(10) == 27)
 			return 0;
 
-		ring_pin.write(flag);
+		ring_pin << flag;
 		if (flag == 1)
 			flag = 0;
 		else if (flag == 0)
 			flag = 1;
-		usleep(1);
+		system("sleep 1");
 	}
 
 	return 0;
