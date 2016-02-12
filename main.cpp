@@ -66,8 +66,15 @@ int main(){
 	double phi;//vertical angle of deviance the sightline of the camera has from the bottom of the goal
 	double theta;//horizontal angle of deviance the sightline of the camera has from the center of the goal
 
-	system("echo 25 > /sys/class/gpio/export");
-	system("echo out > /sys/class/gpio/gpio25/direction");
+	ofstream pin_setup;
+	pin_setup.open("/sys/class/gpio/export");
+	pin_setup << 25;
+	pin_setup.close();
+
+	ofstream pin_direction;
+	pin_direction.open("/sys/class/gpio/gpio25/direction");
+	pin_direction << "out";
+	pin_direction.close();
 
 	ofstream ring_pin;
 	ring_pin.open("/sys/class/gpio/gpio57/value");
