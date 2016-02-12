@@ -5,12 +5,8 @@
 #include <iomanip>
 #include <fstream>
 
-#include <fcntl.h>
-#include <unistd.h>
-
 /*TODO:
 communicate with the roborio
-Do output from pins
 figure out how to friggin calibrate it if it's on the board
 control the LED ring from the board and use it to shoot
 control LED strips to indicate if the shooter is lined up
@@ -69,23 +65,6 @@ int main(){
 	double phi;//vertical angle of deviance the sightline of the camera has from the bottom of the goal
 	double theta;//horizontal angle of deviance the sightline of the camera has from the center of the goal
 
-	char buff[1];
-	buff[0] = 57;
-	int pin_setup;
-	pin_setup = open("/sys/class/gpio/export",O_WRONLY);
-	write(pin_setup,buff,1);
-	close(pin_setup);
-
-	char bufff[3] = {'o','u','t'};
-	int pin_direction;
-	pin_direction = open("/sys/class/gpio/gpio57/direction",O_WRONLY);
-	write(pin_direction,bufff,3);
-	close(pin_direction);
-
-	char flag[1];
-	int ring_pin;
-	ring_pin = open("/sys/class/gpio/gpio57/value",O_WRONLY);
-
 	while (true){
 		camera.read(screen_cap);//get the current frame
 
@@ -125,14 +104,6 @@ int main(){
 		//exit program if pressing ESC
 		if (waitKey(10) == 27)
 			return 0;
-
-		write(ring_pin,flag,1);
-		if (flag[0] == 1)
-			flag[0] = 0;
-		else if (flag[0] == 0)
-			flag[0] = 1;
-		cout << flag[0] << '\n';
-		system("sleep 1");
 	}
 
 	return 0;
