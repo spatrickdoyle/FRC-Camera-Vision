@@ -5,6 +5,10 @@
 #include <iomanip>
 #include <fstream>
 
+#include <termios.h>
+#include <unistd.h>
+#include <fcntl.h>
+
 /*TODO:
 communicate with the roborio
 figure out how to friggin calibrate it if it's on the board
@@ -25,22 +29,25 @@ const double PI = 3.141592653589793238462643383279;
 const double hor_deg = 0.07914;//in DEGREES PER PIXEL. Horizontal field of view is 50.6496 degrees
 const double vert_deg = 0.08189;//in DEGREES PER PIXEL. Vertical field of view is 39.3072 degrees
 
-int main(){
-	system("fswebcam -d /dev/video0 -c cam.cfg -r 640x480");//configure camera. It runs every time because I don't know how persistant the changes are
-	VideoCapture camera(0);//initialize camera
+int main(int argc, char *argv[]){
+	system("fswebcam -d /dev/video1 -c cam.cfg -r 640x480");//configure camera. It runs every time because I don't know how persistant the changes are
+	VideoCapture camera(1);//initialize camera
 
-	//namedWindow("ctrl",WINDOW_AUTOSIZE);//control window for calibrating the camera - commented out unless needed for calibration
+	if (argc == 2){
+		cout << "opening calibration window\n";
+		namedWindow("ctrl",WINDOW_AUTOSIZE);//control window for calibrating the camera
+	}
 
 	Mat screen_cap;//camera image
 	Mat hsv_img;//camera image converted to hsv
 	Mat thresholded;//camera image thresholded
 
 	//high and low hsv threshold settings, to be changed when calibrating
-	int Hlow = 54;
-	int Hhigh = 117;
-	int Slow = 49;
-	int Shigh = 255;
-	int Vlow = 236;
+	int Hlow = 31;
+	int Hhigh = 99;
+	int Slow = 65;
+	int Shigh = 195;
+	int Vlow = 237;
 	int Vhigh = 255;
 
 	//track bars for each threshold variable
@@ -56,14 +63,27 @@ int main(){
 	int center_x;
 	int center_y;
 
-	double goal_height = 66.3;//preset height to top of goal, in INCHES. For the competition goals it should be 95
-	double camera_height = 48.6;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
-	double camera_angle = 14;//angle of deviance from the horizontal, in DEGREES. Should be 42 officially
+	double goal_height = 95;//preset height to top of goal, in INCHES. For the competition goals it should be 95
+	double camera_height = 31.5;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
+	double camera_angle = 26;//angle of deviance from the horizontal, in DEGREES. Should be 42 officially
 	double length = 20;//width of the goal in INCHES
 
 	double distance;//distance camera is from goal, to be calculated
 	double phi;//vertical angle of deviance the sightline of the camera has from the bottom of the goal
 	double theta;//horizontal angle of deviance the sightline of the camera has from the center of the goal
+
+	char send_buffer[16];
+	int output_port = open("/dev/ttyUSB1", O_RDWR|O_NOCTTY);
+	struct termios port_options;
+
+	tcgetattr(output_port, &port_options);
+	cfsetispeed(&port_options, B9600);
+	cfsetospeed(&port_options, B9600);
+	port_options.c_cflag &= ~PARENB;
+	port_options.c_cflag &= ~CSTOPB;
+	port_options.c_cflag &= ~CSIZE;
+	port_options.c_cflag |= CS8;
+	tcsetattr(output_port, TCSANOW, &port_options);
 
 	while (true){
 		camera.read(screen_cap);//get the current frame
@@ -88,8 +108,10 @@ int main(){
 		rectangle(screen_cap,friggin_box,Scalar(0,0,255));//draw it onto the screen because I want to
 
 		//show the image and the thresholded image, only necessary for calibration
-		//imshow("thresholded",thresholded);
-		//imshow("screen_cap",screen_cap);
+		if (argc == 2){
+			imshow("thresholded",thresholded);
+			imshow("screen_cap",screen_cap);
+		}
 
 		//calculate the center of the box, the distance from the goal, and the angle of deviance of the sightline
 		center_x = friggin_box.x + (friggin_box.width/2.0);
@@ -97,9 +119,13 @@ int main(){
 		phi = (240 - friggin_box.y)*vert_deg;
 		distance = (goal_height-camera_height)/tan((phi+camera_angle)*(PI/180.0));//distance from the nearest point of the goal
 		distance += sqrt(pow(length/2.0,2) - pow(distance*tan((friggin_box.width/2.0)*hor_deg*(PI/180.0)),2));//account for angle of approach
-		theta = (center_x-320)*hor_deg;//in DEGREES. Positive value of theta indicates the robot must turn in the COUNTERCLOCKWISE direction because that's how math works
+		theta = -(center_x-320)*hor_deg;//in DEGREES. Positive value of theta indicates the robot must turn in the COUNTERCLOCKWISE direction because that's how math works
 
-		cout << "DISTANCE:" << setw(9) << distance << "   ANGLE:" << setw(9) << theta << '\n';
+		memcpy(send_buffer, &theta, 8);
+		memcpy(send_buffer + 8, &distance, 8);
+
+		//cout << "DISTANCE:" << setw(9) << distance << "   ANGLE:" << setw(9) << theta << '\n';
+		write(output_port, send_buffer, 16);
 
 		//exit program if pressing ESC
 		if (waitKey(10) == 27)
