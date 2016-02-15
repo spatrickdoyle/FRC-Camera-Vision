@@ -3,7 +3,6 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <math.h>
 #include <iomanip>
-#include <fstream>
 
 #include <termios.h>
 #include <unistd.h>
@@ -30,8 +29,8 @@ const double hor_deg = 0.07914;//in DEGREES PER PIXEL. Horizontal field of view 
 const double vert_deg = 0.08189;//in DEGREES PER PIXEL. Vertical field of view is 39.3072 degrees
 
 int main(int argc, char *argv[]){
-	system("fswebcam -d /dev/video1 -c cam.cfg -r 640x480");//configure camera. It runs every time because I don't know how persistant the changes are
-	VideoCapture camera(1);//initialize camera
+	system("fswebcam -d /dev/video0 -c cam.cfg -r 640x480");//configure camera. It runs every time because I don't know how persistant the changes are
+	VideoCapture camera(0);//initialize camera
 
 	if (argc == 2){
 		cout << "opening calibration window\n";
@@ -43,11 +42,11 @@ int main(int argc, char *argv[]){
 	Mat thresholded;//camera image thresholded
 
 	//high and low hsv threshold settings, to be changed when calibrating
-	int Hlow = 31;
-	int Hhigh = 99;
-	int Slow = 65;
-	int Shigh = 195;
-	int Vlow = 237;
+	int Hlow = 74;
+	int Hhigh = 90;
+	int Slow = 94;
+	int Shigh = 238;
+	int Vlow = 0;
 	int Vhigh = 255;
 
 	//track bars for each threshold variable
@@ -64,8 +63,8 @@ int main(int argc, char *argv[]){
 	int center_y;
 
 	double goal_height = 95;//preset height to top of goal, in INCHES. For the competition goals it should be 95
-	double camera_height = 31.5;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
-	double camera_angle = 26;//angle of deviance from the horizontal, in DEGREES. Should be 42 officially
+	double camera_height = 25.125;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
+	double camera_angle = 31;//angle of deviance from the horizontal, in DEGREES. Should be 42 officially
 	double length = 20;//width of the goal in INCHES
 
 	double distance;//distance camera is from goal, to be calculated
@@ -73,7 +72,7 @@ int main(int argc, char *argv[]){
 	double theta;//horizontal angle of deviance the sightline of the camera has from the center of the goal
 
 	char send_buffer[16];
-	int output_port = open("/dev/ttyUSB1", O_RDWR|O_NOCTTY);
+	int output_port = open("/dev/ttyUSB0", O_RDWR|O_NOCTTY);
 	struct termios port_options;
 
 	tcgetattr(output_port, &port_options);
