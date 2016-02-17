@@ -7,15 +7,13 @@
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <fstream>
 
 /*TODO:
-communicate with the roborio
-figure out how to friggin calibrate it if it's on the board
-control the LED ring from the board and use it to shoot
-control LED strips to indicate if the shooter is lined up
-detect if it is on the embedded platform, and only draw to the screen if it ISN'T
-Make a better gui for calibrating, so you don't have to comment and uncomment and hardcode crap
-Maybe send camera index as an argument
+control the LED ring from the board and use it to shoot (by communicating with the rio)
+control LED strips to indicate if the shooter is lined up - OKAY APPARENTLY THE STRIP TAKES 12V SO WE'RE GONNA HAVE TO FIGURE OUT ANOTHER WAY TO POWER IT
+autodetect the ids for the usb and camera
+catch if the serial or camera don't load
 make second camera recognize balls
 */
 
@@ -29,7 +27,7 @@ const double hor_deg = 0.07914;//in DEGREES PER PIXEL. Horizontal field of view 
 const double vert_deg = 0.08189;//in DEGREES PER PIXEL. Vertical field of view is 39.3072 degrees
 
 int main(int argc, char *argv[]){
-	system("fswebcam -d /dev/video0 -c cam.cfg -r 640x480");//configure camera. It runs every time because I don't know how persistant the changes are
+	system("fswebcam -d /dev/video0 -c cam.conf");//configure camera. It runs every time because I don't know how persistant the changes are
 	VideoCapture camera(0);//initialize camera
 
 	if (argc == 2){
@@ -42,12 +40,23 @@ int main(int argc, char *argv[]){
 	Mat thresholded;//camera image thresholded
 
 	//high and low hsv threshold settings, to be changed when calibrating
-	int Hlow = 74;
-	int Hhigh = 90;
-	int Slow = 94;
-	int Shigh = 238;
-	int Vlow = 0;
-	int Vhigh = 255;
+	int Hlow;// = 39;
+	int Hhigh;// = 95;
+	int Slow;// = 200;
+	int Shigh;// = 255;
+	int Vlow;// = 0;
+	int Vhigh;// = 255;
+
+	ifstream hsv_file;
+	hsv_file.open("hsv.conf");
+	hsv_file >> Hlow;
+	hsv_file >> Hhigh;
+	hsv_file >> Slow;
+	hsv_file >> Shigh;
+	hsv_file >> Vlow;
+	hsv_file >> Vhigh;
+	hsv_file.close();
+	ofstream hsv_out;
 
 	//track bars for each threshold variable
 	createTrackbar("HL","ctrl",&Hlow,179);
@@ -63,21 +72,24 @@ int main(int argc, char *argv[]){
 	int center_y;
 
 	double goal_height = 95;//preset height to top of goal, in INCHES. For the competition goals it should be 95
-	double camera_height = 25.125;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
-	double camera_angle = 31;//angle of deviance from the horizontal, in DEGREES. Should be 42 officially
+	double camera_height = 25;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
+	double camera_angle = 21;//angle of deviance from the horizontal, in DEGREES. Should be 42 officially
 	double length = 20;//width of the goal in INCHES
+	double ball_diameter = 10;
+	double offset = 6.75;//offset of the camera from the center of the robot in INCHES
 
-	double distance;//distance camera is from goal, to be calculated
+	float distance;//distance camera is from goal, to be calculated
 	double phi;//vertical angle of deviance the sightline of the camera has from the bottom of the goal
-	double theta;//horizontal angle of deviance the sightline of the camera has from the center of the goal
+	float theta;//horizontal angle of deviance the sightline of the camera has from the center of the goal
+	double shooter_angle;
 
-	char send_buffer[16];
+	char send_buffer[8];
 	int output_port = open("/dev/ttyUSB0", O_RDWR|O_NOCTTY);
 	struct termios port_options;
 
 	tcgetattr(output_port, &port_options);
-	cfsetispeed(&port_options, B9600);
-	cfsetospeed(&port_options, B9600);
+	cfsetispeed(&port_options, B38400);
+	cfsetospeed(&port_options, B38400);
 	port_options.c_cflag &= ~PARENB;
 	port_options.c_cflag &= ~CSTOPB;
 	port_options.c_cflag &= ~CSIZE;
@@ -87,17 +99,10 @@ int main(int argc, char *argv[]){
 	while (true){
 		camera.read(screen_cap);//get the current frame
 
-		//smooth everything out (I'm not sure if this is necessary but I'm not getting rid of it now, it works pretty well)
-		erode(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
-		dilate(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
-		dilate(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
-		erode(screen_cap,screen_cap,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
-
 		cvtColor(screen_cap,hsv_img,CV_BGR2HSV);//convert the frame to HSV, because it's easier to threshold (theoretically)
 
 		inRange(hsv_img,Scalar(Hlow,Slow,Vlow),Scalar(Hhigh,Shigh,Vhigh),thresholded);//threshold it
 
-		//blur it again (to get rid of noise)
 		erode(thresholded,thresholded,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
 		dilate(thresholded,thresholded,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
 		dilate(thresholded,thresholded,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
@@ -120,15 +125,35 @@ int main(int argc, char *argv[]){
 		distance += sqrt(pow(length/2.0,2) - pow(distance*tan((friggin_box.width/2.0)*hor_deg*(PI/180.0)),2));//account for angle of approach
 		theta = -(center_x-320)*hor_deg;//in DEGREES. Positive value of theta indicates the robot must turn in the COUNTERCLOCKWISE direction because that's how math works
 
-		memcpy(send_buffer, &theta, 8);
-		memcpy(send_buffer + 8, &distance, 8);
+		if (offset != 0){
+			if (theta > 0)
+				theta = 90 - (180.0/PI)*atan((distance*sin((90-theta)*(PI/180.0)))/((distance*cos((90-theta)*(PI/180.0)))+offset));
+			else if (theta < 0)
+				theta = (180.0/PI)*atan((distance*sin((90+theta)*(PI/180.0)))/((distance*cos((90+theta)*(PI/180.0)))+offset)) - 90;
+		}
 
-		//cout << "DISTANCE:" << setw(9) << distance << "   ANGLE:" << setw(9) << theta << '\n';
-		write(output_port, send_buffer, 16);
+		shooter_angle = (hor_deg*(4.0/5.0)*friggin_box.width)/2.0;
+
+		//cout << shooter_angle << ' ' << distance*tan((PI/180.0)*shooter_angle)*2 << '\n';
+		if (shooter_angle > fabs(theta)){
+		if (distance*tan((PI/180.0)*shooter_angle)*2 > ball_diameter){
+			theta = 0;}}
+
+		memcpy(send_buffer, &theta, 4);
+		memcpy(send_buffer + 4, &distance, 4);
+
+		cout << "DISTANCE:" << setw(9) << distance << "   ANGLE:" << setw(9) << theta << '\n';
+		write(output_port, send_buffer, 8);
 
 		//exit program if pressing ESC
 		if (waitKey(10) == 27)
 			return 0;
+		else if (waitKey(10) == 32){
+			hsv_out.open("hsv.conf");
+			hsv_out << Hlow << '\n' << Hhigh << '\n' << Slow << '\n' << Shigh << '\n' << Vlow << '\n' << Vhigh << '\n';
+			cout << "writing values to file... \n";
+			hsv_out.close();
+		}
 	}
 
 	return 0;
