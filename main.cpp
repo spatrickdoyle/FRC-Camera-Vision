@@ -9,6 +9,7 @@
 #include <fstream>
 #include <string>
 
+
 /*TODO:
 control the LED ring from the board and use it to shoot (by communicating with the rio)
 control LED strips to indicate if the shooter is lined up - OKAY APPARENTLY THE STRIP TAKES 12V SO WE'RE GONNA HAVE TO FIGURE OUT ANOTHER WAY TO POWER IT
@@ -19,8 +20,8 @@ make second camera recognize balls
 using namespace cv;
 using namespace std;
 
-Rect findBiggestBlob(Mat & matImage);//this function finds the bounding rectangle of the largest contiguous region in the image
-//void getDevices();
+Rect findBiggestBlob(Mat& matImage);//this function finds the bounding rectangle of the largest contiguous region in the image
+void getDevices(string& vid, string& usb);
 
 const double PI = 3.141592653589793238462643383279;
 const double hor_deg = 0.07914;//in DEGREES PER PIXEL. Horizontal field of view is 50.6496 degrees
@@ -31,7 +32,10 @@ int main(int argc, char *argv[]){
 	string video_device = "/dev/video0";
 	string usb_device = "/dev/ttyUSB0";
 
-	system("fswebcam -d "+video_device+" -c cam.conf");//configure camera. It runs every time because I don't know how persistant the changes are
+	//getDevices(video_device,usb_device);
+	//return 0;
+
+	system(("fswebcam -d "+video_device+" -c cam.conf").c_str());//configure camera. It runs every time because I don't know how persistant the changes are
 	VideoCapture camera(0);//initialize camera
 	if (!camera.isOpened()){
 		cout << "Camera device ("+video_device+") did not load. Make sure the right device from /dev is selected!\n";
@@ -189,4 +193,16 @@ Rect findBiggestBlob(Mat &matImage){
 	}
 
 	return bounding_rect;
+}
+
+void getDevices(string& vid, string& usb){
+	system("ls /dev > devices.txt");
+	ifstream devices;
+	devices.open("devices.txt");
+	string slash_dev;
+
+	char c;
+	while (devices.get(c))
+		slash_dev += c;
+
 }
