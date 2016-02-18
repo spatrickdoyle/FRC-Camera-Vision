@@ -3,17 +3,16 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <math.h>
 #include <iomanip>
-
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <fstream>
+#include <string>
 
 /*TODO:
 control the LED ring from the board and use it to shoot (by communicating with the rio)
 control LED strips to indicate if the shooter is lined up - OKAY APPARENTLY THE STRIP TAKES 12V SO WE'RE GONNA HAVE TO FIGURE OUT ANOTHER WAY TO POWER IT
 autodetect the ids for the usb and camera
-catch if the serial or camera don't load
 make second camera recognize balls
 */
 
@@ -21,14 +20,23 @@ using namespace cv;
 using namespace std;
 
 Rect findBiggestBlob(Mat & matImage);//this function finds the bounding rectangle of the largest contiguous region in the image
+//void getDevices();
 
 const double PI = 3.141592653589793238462643383279;
 const double hor_deg = 0.07914;//in DEGREES PER PIXEL. Horizontal field of view is 50.6496 degrees
 const double vert_deg = 0.08189;//in DEGREES PER PIXEL. Vertical field of view is 39.3072 degrees
 
 int main(int argc, char *argv[]){
-	system("fswebcam -d /dev/video0 -c cam.conf");//configure camera. It runs every time because I don't know how persistant the changes are
+
+	string video_device = "/dev/video0";
+	string usb_device = "/dev/ttyUSB0";
+
+	system("fswebcam -d "+video_device+" -c cam.conf");//configure camera. It runs every time because I don't know how persistant the changes are
 	VideoCapture camera(0);//initialize camera
+	if (!camera.isOpened()){
+		cout << "Camera device ("+video_device+") did not load. Make sure the right device from /dev is selected!\n";
+		return -1;
+	}
 
 	if (argc == 2){
 		cout << "opening calibration window\n";
@@ -84,8 +92,13 @@ int main(int argc, char *argv[]){
 	double shooter_angle;
 
 	char send_buffer[8];
-	int output_port = open("/dev/ttyUSB0", O_RDWR|O_NOCTTY);
+	int output_port = open(usb_device.c_str(), O_RDWR|O_NOCTTY);
 	struct termios port_options;
+	
+	if (output_port == -1){
+		cout << "USB serial device ("+usb_device+") failed to load. Make sure the right device from /dev is selected!\n";
+		return -1;
+	}
 
 	tcgetattr(output_port, &port_options);
 	cfsetispeed(&port_options, B38400);
@@ -123,21 +136,16 @@ int main(int argc, char *argv[]){
 		phi = (240 - friggin_box.y)*vert_deg;
 		distance = (goal_height-camera_height)/tan((phi+camera_angle)*(PI/180.0));//distance from the nearest point of the goal
 		distance += sqrt(pow(length/2.0,2) - pow(distance*tan((friggin_box.width/2.0)*hor_deg*(PI/180.0)),2));//account for angle of approach
-		theta = -(center_x-320)*hor_deg;//in DEGREES. Positive value of theta indicates the robot must turn in the COUNTERCLOCKWISE direction because that's how math works
+		theta = (center_x-320)*hor_deg;//in DEGREES. Positive value of theta indicates the robot must turn in the COUNTERCLOCKWISE direction because that's how math works
 
-		if (offset != 0){
-			if (theta > 0)
-				theta = 90 - (180.0/PI)*atan((distance*sin((90-theta)*(PI/180.0)))/((distance*cos((90-theta)*(PI/180.0)))+offset));
-			else if (theta < 0)
-				theta = (180.0/PI)*atan((distance*sin((90+theta)*(PI/180.0)))/((distance*cos((90+theta)*(PI/180.0)))+offset)) - 90;
+		theta = -atan(sin(90-theta)/(cos(90-theta)-offset));
+		distance = sqrt(pow(sin(90-theta),2)+pow((cos(90-theta)-offset),2));
+
+		shooter_angle = hor_deg*(2.0/5.0)*friggin_box.width;
+
+		if (fabs(theta) < (shooter_angle-90+acos(ball_diameter/sqrt(pow(distance,2)+pow(((length-4)/2.0),2))))){
+			theta = 0;
 		}
-
-		shooter_angle = (hor_deg*(4.0/5.0)*friggin_box.width)/2.0;
-
-		//cout << shooter_angle << ' ' << distance*tan((PI/180.0)*shooter_angle)*2 << '\n';
-		if (shooter_angle > fabs(theta)){
-		if (distance*tan((PI/180.0)*shooter_angle)*2 > ball_diameter){
-			theta = 0;}}
 
 		memcpy(send_buffer, &theta, 4);
 		memcpy(send_buffer + 4, &distance, 4);
