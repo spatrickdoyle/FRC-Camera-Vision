@@ -17,11 +17,20 @@ autodetect the ids for the usb and camera
 make second camera recognize balls
 */
 
+/*Usage:
+./Camera-Vision-2016 [option]
+Options:
+quiet - don't give any output (except, y'know, for the camera stuff at the beginning)
+cal - bring up calibration info - threshold window, slider bars, and color view (by the way, you can press spacebar to make the changes persistant now!)
+view - just bring up a video feed (also outputs data to the terminal, like pretty much everything else)*/
+
+
 using namespace cv;
 using namespace std;
 
 Rect findBiggestBlob(Mat& matImage);//this function finds the bounding rectangle of the largest contiguous region in the image
-void getDevices(string& vid, string& usb);
+void getDevices(string& vid, string& usb);//get the device names from /dev
+int sgn(double num);
 
 const double PI = 3.141592653589793238462643383279;
 const double hor_deg = 0.07914;//in DEGREES PER PIXEL. Horizontal field of view is 50.6496 degrees
@@ -37,14 +46,16 @@ int main(int argc, char *argv[]){
 
 	system(("fswebcam -d "+video_device+" -c cam.conf").c_str());//configure camera. It runs every time because I don't know how persistant the changes are
 	VideoCapture camera(0);//initialize camera
-	if (!camera.isOpened()){
+	if (!camera.isOpened()){//if the camera doesn't load, quit
 		cout << "Camera device ("+video_device+") did not load. Make sure the right device from /dev is selected!\n";
 		return -1;
 	}
 
-	if (argc == 2){
-		cout << "opening calibration window\n";
-		namedWindow("ctrl",WINDOW_AUTOSIZE);//control window for calibrating the camera
+	if (argc == 2){//check command line args
+		if (string(argv[1]) == "cal"){
+			cout << "opening calibration window\n";
+			namedWindow("ctrl",WINDOW_AUTOSIZE);//control window for calibrating the camera
+		}
 	}
 
 	Mat screen_cap;//camera image
@@ -52,13 +63,14 @@ int main(int argc, char *argv[]){
 	Mat thresholded;//camera image thresholded
 
 	//high and low hsv threshold settings, to be changed when calibrating
-	int Hlow;// = 39;
-	int Hhigh;// = 95;
-	int Slow;// = 200;
-	int Shigh;// = 255;
-	int Vlow;// = 0;
-	int Vhigh;// = 255;
+	int Hlow;
+	int Hhigh;
+	int Slow;
+	int Shigh;
+	int Vlow;
+	int Vhigh;
 
+	//open calibration file and read the values into the variables
 	ifstream hsv_file;
 	hsv_file.open("hsv.conf");
 	hsv_file >> Hlow;
@@ -84,29 +96,32 @@ int main(int argc, char *argv[]){
 	int center_y;
 
 	double goal_height = 95;//preset height to top of goal, in INCHES. For the competition goals it should be 95
-	double camera_height = 25;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
-	double camera_angle = 21;//angle of deviance from the horizontal, in DEGREES. Should be 42 officially
+	double camera_height = 26.5;//preset height of the camera, in INCHES. I don't know where we're mounting the camera on the robot yet
+	double camera_angle = 38;//angle of deviance from the horizontal, in DEGREES. Should be 42 officially
 	double length = 20;//width of the goal in INCHES
 	double ball_diameter = 10;
-	double offset = 6.75;//offset of the camera from the center of the robot in INCHES
+	double offset = -4.5;//offset of the camera from the center of the robot in INCHES
 
 	float distance;//distance camera is from goal, to be calculated
 	double phi;//vertical angle of deviance the sightline of the camera has from the bottom of the goal
 	float theta;//horizontal angle of deviance the sightline of the camera has from the center of the goal
-	double shooter_angle;
+	double shooter_angle;//the angle the robot can turn to still have the line of sight inside the goal
+	double theta_final;//final horizontal angle
+	double distance_final;//final distance
 
-	char send_buffer[8];
-	int output_port = open(usb_device.c_str(), O_RDWR|O_NOCTTY);
-	struct termios port_options;
+	char send_buffer[8];//buffer to send over serial
+	int output_port = open(usb_device.c_str(), O_RDWR|O_NOCTTY);//open the usb serial connection
+	termios port_options;//serial object
 	
-	if (output_port == -1){
+	if (output_port == -1){//if the serial connection doesn't open, rip
 		cout << "USB serial device ("+usb_device+") failed to load. Make sure the right device from /dev is selected!\n";
 		return -1;
 	}
 
+	//set all the attributes for the serial connection
 	tcgetattr(output_port, &port_options);
-	cfsetispeed(&port_options, B38400);
-	cfsetospeed(&port_options, B38400);
+	cfsetispeed(&port_options, B9600);
+	cfsetospeed(&port_options, B9600);
 	port_options.c_cflag &= ~PARENB;
 	port_options.c_cflag &= ~CSTOPB;
 	port_options.c_cflag &= ~CSIZE;
@@ -120,6 +135,7 @@ int main(int argc, char *argv[]){
 
 		inRange(hsv_img,Scalar(Hlow,Slow,Vlow),Scalar(Hhigh,Shigh,Vhigh),thresholded);//threshold it
 
+		//blur it a little to get rid of noise
 		erode(thresholded,thresholded,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
 		dilate(thresholded,thresholded,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
 		dilate(thresholded,thresholded,getStructuringElement(MORPH_ELLIPSE,Size(5,5)));
@@ -130,8 +146,10 @@ int main(int argc, char *argv[]){
 
 		//show the image and the thresholded image, only necessary for calibration
 		if (argc == 2){
-			imshow("thresholded",thresholded);
-			imshow("screen_cap",screen_cap);
+			if ((string(argv[1]) == "cal")||(string(argv[1]) == "view"))
+				imshow("screen_cap",screen_cap);
+			if (string(argv[1]) == "cal")
+				imshow("thresholded",thresholded);
 		}
 
 		//calculate the center of the box, the distance from the goal, and the angle of deviance of the sightline
@@ -142,19 +160,27 @@ int main(int argc, char *argv[]){
 		distance += sqrt(pow(length/2.0,2) - pow(distance*tan((friggin_box.width/2.0)*hor_deg*(PI/180.0)),2));//account for angle of approach
 		theta = (center_x-320)*hor_deg;//in DEGREES. Positive value of theta indicates the robot must turn in the COUNTERCLOCKWISE direction because that's how math works
 
-		theta = -atan(sin(90-theta)/(cos(90-theta)-offset));
-		distance = sqrt(pow(sin(90-theta),2)+pow((cos(90-theta)-offset),2));
+		theta_final = (180.0/PI)*atan( (distance*sin( (90-theta)*(PI/180.0) )) / ( (distance*cos( (90-theta)*(PI/180.0) )) + offset ) );
+		theta_final = sgn(theta_final)*(90-fabs(theta_final));
+		distance_final = sqrt(pow(distance*sin((90-theta)*(PI/180.0)),2)+pow((distance*cos((90-theta)*(PI/180.0)))+offset,2));
 
 		shooter_angle = hor_deg*(2.0/5.0)*friggin_box.width;
 
-		if (fabs(theta) < (shooter_angle-90+acos(ball_diameter/sqrt(pow(distance,2)+pow(((length-4)/2.0),2))))){
-			theta = 0;
+		if (fabs(theta_final) < (shooter_angle-90+acos(ball_diameter/sqrt(pow(distance_final,2)+pow(((length-4)/2.0),2))))){
+			theta_final = 0;
 		}
 
-		memcpy(send_buffer, &theta, 4);
-		memcpy(send_buffer + 4, &distance, 4);
+		memcpy(send_buffer, &theta_final, 4);
+		memcpy(send_buffer + 4, &distance_final, 4);
 
-		cout << "DISTANCE:" << setw(9) << distance << "   ANGLE:" << setw(9) << theta << '\n';
+		if (argc == 2){
+			if (string(argv[1]) != "quiet"){
+			cout << "DISTANCE:" << setw(9) << distance_final << "   ANGLE:" << setw(9) << theta_final << '\n';
+			}
+		}
+		else{
+			cout << "DISTANCE:" << setw(9) << distance_final << "   ANGLE:" << setw(9) << theta_final << '\n';
+		}
 		write(output_port, send_buffer, 8);
 
 		//exit program if pressing ESC
@@ -205,4 +231,8 @@ void getDevices(string& vid, string& usb){
 	while (devices.get(c))
 		slash_dev += c;
 
+}
+
+int sgn(double num){
+	return num == 0 ? 0 : num / fabs(num);
 }
