@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project( Camera-Vision-2016 )
+SET(CMAKE_CXX_FLAGS "-std=c++0x")
 find_package( OpenCV REQUIRED )
+link_directories( /home/ubuntu/Downloads/Camera-Vision-2016/include )
 add_executable( Camera-Vision-2016 main.cpp )
-target_link_libraries( Camera-Vision-2016 ${OpenCV_LIBS} )
+target_link_libraries( Camera-Vision-2016 ${OpenCV_LIBS} ${ntcore_LIBS} )

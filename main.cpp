@@ -9,6 +9,9 @@
 #include <fstream>
 #include <string>
 
+#include "include/ntcore.h"
+#include "include/networktables/NetworkTable.h"
+
 
 /*TODO:
 control the LED ring from the board and use it to shoot (by communicating with the rio)
@@ -39,7 +42,7 @@ const double vert_deg = 0.08189;//in DEGREES PER PIXEL. Vertical field of view i
 int main(int argc, char *argv[]){
 
 	string video_device = "/dev/video0";
-	string usb_device = "/dev/ttyUSB0";
+	//string usb_device = "/dev/ttyUSB0";
 
 	//getDevices(video_device,usb_device);
 	//return 0;
@@ -109,7 +112,7 @@ int main(int argc, char *argv[]){
 	double theta_final;//final horizontal angle
 	double distance_final;//final distance
 
-	char send_buffer[8];//buffer to send over serial
+	/*char send_buffer[8];//buffer to send over serial
 	int output_port = open(usb_device.c_str(), O_RDWR|O_NOCTTY);//open the usb serial connection
 	termios port_options;//serial object
 	
@@ -126,7 +129,7 @@ int main(int argc, char *argv[]){
 	port_options.c_cflag &= ~CSTOPB;
 	port_options.c_cflag &= ~CSIZE;
 	port_options.c_cflag |= CS8;
-	tcsetattr(output_port, TCSANOW, &port_options);
+	tcsetattr(output_port, TCSANOW, &port_options);*/
 
 	while (true){
 		camera.read(screen_cap);//get the current frame
@@ -170,8 +173,8 @@ int main(int argc, char *argv[]){
 			theta_final = 0;
 		}
 
-		memcpy(send_buffer, &theta_final, 4);
-		memcpy(send_buffer + 4, &distance_final, 4);
+		//memcpy(send_buffer, &theta_final, 4);
+		//memcpy(send_buffer + 4, &distance_final, 4);
 
 		if (argc == 2){
 			if (string(argv[1]) != "quiet"){
@@ -181,7 +184,7 @@ int main(int argc, char *argv[]){
 		else{
 			cout << "DISTANCE:" << setw(9) << distance_final << "   ANGLE:" << setw(9) << theta_final << '\n';
 		}
-		write(output_port, send_buffer, 8);
+		//write(output_port, send_buffer, 8);
 
 		//exit program if pressing ESC
 		if (waitKey(10) == 27)
