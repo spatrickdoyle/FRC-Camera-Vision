@@ -9,4 +9,14 @@ To build:<br>
 cmake .
 make
 ```
-<br>
+<br><br>
+Usage:<br>
+./Camera-Vision-2016 [option]<br>
+Options:<br>
+quiet - don't give any output (except, y'know, for the camera stuff at the beginning)<br>
+cal - bring up calibration info - threshold window, slider bars, and color view (by the way, you can press spacebar to make the changes persistant now!)<br>
+view - just bring up a video feed (also outputs data to the terminal, like pretty much everything else)<br>
+<br><br>
+To start the VNC server on the Jetson, ssh into it (the default static IP address is 10.24.10.4) and run<br>
+'''vncserver'''<br>
+Then on the drive laptop connect to 10.24.10.4:5901<br>

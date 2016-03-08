@@ -13,19 +13,18 @@
 #include "include/networktables/NetworkTable.h"
 
 
-/*TODO:
-control the LED ring from the board and use it to shoot (by communicating with the rio)
-control LED strips to indicate if the shooter is lined up - OKAY APPARENTLY THE STRIP TAKES 12V SO WE'RE GONNA HAVE TO FIGURE OUT ANOTHER WAY TO POWER IT
-autodetect the ids for the usb and camera
-make second camera recognize balls
-*/
-
 /*Usage:
 ./Camera-Vision-2016 [option]
 Options:
 quiet - don't give any output (except, y'know, for the camera stuff at the beginning)
 cal - bring up calibration info - threshold window, slider bars, and color view (by the way, you can press spacebar to make the changes persistant now!)
-view - just bring up a video feed (also outputs data to the terminal, like pretty much everything else)*/
+view - just bring up a video feed (also outputs data to the terminal, like pretty much everything else)
+
+VNC:
+To start the VNC server on the Jetson, ssh into it (the default static IP address is 10.24.10.4) and run vncserver. Then on the drive laptop connect to 10.24.10.4:5901.
+The password for the ubuntu user on the Jetson is capsrobotics, but the password for the VNC is capsrobo
+
+Hey! In order to make the code run at startup, just copy camera-job.conf to /etc/init*/
 
 
 using namespace cv;
@@ -131,10 +130,9 @@ int main(int argc, char *argv[]){
 	port_options.c_cflag |= CS8;
 	tcsetattr(output_port, TCSANOW, &port_options);*/
 
+	NetworkTable::SetClientMode();
+	NetworkTable::SetIPAddress("10.24.10.2\n");
 	auto nt = NetworkTable::GetTable("Jetson");
-	nt->SetClientMode();
-	nt->SetIPAddress("10.24.10.2\n");
-	nt->Initialize();
 
 	while (true){
 		camera.read(screen_cap);//get the current frame
