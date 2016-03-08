@@ -1,0 +1,1 @@
+/home/ubuntu/Downloads/Camera-Vision-2016/CMakeFiles/Camera-Vision-2016.dir

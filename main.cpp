@@ -131,6 +131,11 @@ int main(int argc, char *argv[]){
 	port_options.c_cflag |= CS8;
 	tcsetattr(output_port, TCSANOW, &port_options);*/
 
+	auto nt = NetworkTable::GetTable("Jetson");
+	nt->SetClientMode();
+	nt->SetIPAddress("10.24.10.2\n");
+	nt->Initialize();
+
 	while (true){
 		camera.read(screen_cap);//get the current frame
 
@@ -184,6 +189,8 @@ int main(int argc, char *argv[]){
 		else{
 			cout << "DISTANCE:" << setw(9) << distance_final << "   ANGLE:" << setw(9) << theta_final << '\n';
 		}
+		nt->PutNumber("distance", distance_final);
+		nt->PutNumber("angle", theta_final);
 		//write(output_port, send_buffer, 8);
 
 		//exit program if pressing ESC
@@ -239,3 +246,4 @@ void getDevices(string& vid, string& usb){
 int sgn(double num){
 	return num == 0 ? 0 : num / fabs(num);
 }
+
