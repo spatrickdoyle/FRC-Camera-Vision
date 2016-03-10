@@ -46,7 +46,7 @@ int main(int argc, char *argv[]){
 	//getDevices(video_device,usb_device);
 	//return 0;
 
-	system(("fswebcam -d "+video_device+" -c cam.conf").c_str());//configure camera. It runs every time because I don't know how persistant the changes are
+	system(("fswebcam -d "+video_device+" -c /home/ubuntu/Downloads/Camera-Vision-2016/cam.conf").c_str());//configure camera. It runs every time because I don't know how persistant the changes are
 	VideoCapture camera(0);//initialize camera
 	if (!camera.isOpened()){//if the camera doesn't load, quit
 		cout << "Camera device ("+video_device+") did not load. Make sure the right device from /dev is selected!\n";
@@ -74,7 +74,7 @@ int main(int argc, char *argv[]){
 
 	//open calibration file and read the values into the variables
 	ifstream hsv_file;
-	hsv_file.open("hsv.conf");
+	hsv_file.open("/home/ubuntu/Downloads/Camera-Vision-2016/hsv.conf");
 	hsv_file >> Hlow;
 	hsv_file >> Hhigh;
 	hsv_file >> Slow;
