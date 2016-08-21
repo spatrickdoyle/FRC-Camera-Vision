@@ -1,6 +1,6 @@
 # Camera-Vision-2016
 
-This is a clone of the repository where the camera tracking code for the Metal Mustangs (FIRST Robotics team 2410) 2016 season was kept. I created it for the purposes of consolidating all my work to one place. The original repository may be found [here](https://github.com/CAPS-Robotics/Camera-Vision-2016). It has not been changed except for this message.<br/><br/>
+This is a clone of the repository where the camera tracking code for the Metal Mustangs (FIRST Robotics team 2410) 2016 season was kept. I created it for the purposes of consolidating all my work to one place. The original repository may be found [here](https://github.com/CAPS-Robotics/Camera-Vision-2016). It has not been changed except for this message. Additional information on what this code does and how it works may be found [here](http://www.spatrickdoyle.com/vision.html).<br/><br/>
 
 Just the camera code for the 2016 season<br>
 Dependancies:<br>
